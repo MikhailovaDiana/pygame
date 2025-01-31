@@ -1,5 +1,7 @@
 import pygame
 import random
+import csv
+import os
 
 pygame.init()
 
@@ -9,6 +11,7 @@ PADDING = 10
 BORDER_RADIUS = 15
 FPS = 80
 TOP_PADDING = 80
+RECORDS_FILE = "records.csv"
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -89,6 +92,39 @@ def draw_grid():
                     text = font.render(render_value(value), True, BLACK)
                     text_rect = text.get_rect(center=(x + CELL_SIZE // 2, y + CELL_SIZE // 2))
                     screen.blit(text, text_rect)
+
+
+def load_records():
+    #Загружает таблицу рекордов из CSV-файла
+    if not os.path.exists(RECORDS_FILE):
+        return []
+
+    with open(RECORDS_FILE, mode='r', newline='', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        records = []
+        for row in reader:
+            if len(row) == 2:
+                records.append((row[0], int(row[1])))
+        return records
+
+
+def save_records(records):
+    #Сохраняет таблицу рекордов в CSV-файл
+    with open(RECORDS_FILE, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        for record in records:
+            writer.writerow(record)
+
+
+def add_record(name, score):
+    #Добавляет новый рекорд в таблицу
+    records = load_records()
+    records.append((name, score))
+    # Сортируем записи по убыванию счета
+    records.sort(key=lambda x: x[1], reverse=True)
+    # Оставляем только топ-10 результатов
+    records = records[:10]
+    save_records(records)
 
 def add_random_tile(column, count):
     # добавляет случайные плитки в столбец сверху
@@ -261,6 +297,34 @@ def draw_start_menu():
     hard_text_rect = hard_text.get_rect(center=hard_rect.center)
     screen.blit(hard_text, hard_text_rect)
 
+
+def draw_input_name_screen():
+    #Отрисовывает экран для ввода имени игрока
+    screen.fill(WHITE)
+    input_text = menu_font.render("Введите ваше имя:", True, BLACK)
+    input_rect = input_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+    screen.blit(input_text, input_rect)
+
+    pygame.draw.rect(screen, GRAY, (WIDTH // 2 - 150, HEIGHT // 2, 300, 60), border_radius=15)
+    name_text = menu_font.render(player_name, True, BLACK)
+    name_rect = name_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
+    screen.blit(name_text, name_rect)
+
+def handle_input_name(event):
+    """Обрабатывает ввод имени игрока."""
+    global player_name
+    if event.key == pygame.K_BACKSPACE:
+        player_name = player_name[:-1]
+    elif event.key == pygame.K_RETURN:
+        if player_name.strip():
+            add_record(player_name, score)
+            return True
+    else:
+        if len(player_name) < 15:
+            player_name += event.unicode
+    return False
+
+
 def handle_menu_click(pos):
     # Обрабатывает клик в стартовом меню
     global game_state, current_difficulty
@@ -298,6 +362,30 @@ def check_and_fill_grid():
     if empty_cells:
         for i, j in empty_cells:
             grid[i][j] = random.choice([2, 4, 8, 16, 32, 64])
+
+
+def draw_records_screen():
+    #Отрисовывает экран с таблицей рекордов
+    screen.fill(WHITE)
+    records = load_records()
+    title_text = menu_font.render("Таблица рекордов", True, BLACK)
+    title_rect = title_text.get_rect(center=(WIDTH // 2, 50))
+    screen.blit(title_text, title_rect)
+
+    for i, (name, record_score) in enumerate(records):
+        record_text = score_font.render(f"{i + 1}. {name}: {record_score}", True, BLACK)
+        record_rect = record_text.get_rect(center=(WIDTH // 2, 120 + i * 50))
+        screen.blit(record_text, record_rect)
+
+    # Кнопка "Назад"
+    back_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT - 100, 200, 60)
+    pygame.draw.rect(screen, (144, 238, 144), back_rect, border_radius=15)
+    back_text = menu_font.render("Назад", True, WHITE)
+    back_text_rect = back_text.get_rect(center=back_rect.center)
+    screen.blit(back_text, back_text_rect)
+
+    return back_rect
+
 
 def is_game_over():
     # Проверяет, остались ли на поле клетки, которые можно объединить
@@ -342,12 +430,14 @@ def restart_game():
     initialize_grid()
 
 
-
 running = True
 dragging = False
 game_over = False
 selected_cells = []
 game_over_delay = 1500
+player_name = ""
+input_name_active = False
+show_records = False
 
 while running:
     if game_state == START_MENU:
@@ -363,68 +453,76 @@ while running:
         if not game_over:
             screen.fill(WHITE)
             if dragging:
-                draw_line(selected_cells)  # Отрисовываем линию перед отрисовкой клеток
-            draw_grid()  # Отрисовываем сетку
-            draw_falling_cells()  # Отрисовываем падающие клетки
-            update_falling_cells()  # Обновляем анимацию падения
-            draw_score()  # Отрисовываем счет
+                draw_line(selected_cells)
+            draw_grid()
+            draw_falling_cells()
+            update_falling_cells()
+            draw_score()
 
-            # Проверяем, проиграл ли игрок
             if is_game_over():
-                pygame.time.delay(game_over_delay)  # Задержка перед показом экрана проигрыша
+                pygame.time.delay(game_over_delay)
                 game_over = True
+                input_name_active = True
 
         if game_over:
-            restart_rect = draw_game_over_screen()
-
+            if input_name_active:
+                draw_input_name_screen()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                    elif event.type == pygame.KEYDOWN:
+                        if handle_input_name(event):
+                            input_name_active = False
+                            show_records = True
+            elif show_records:
+                back_rect = draw_records_screen()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:
+                            if back_rect.collidepoint(event.pos):
+                                show_records = False
+                                restart_game()
+                                game_state = START_MENU
+        else:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        if restart_rect.collidepoint(event.pos):
-                            restart_game()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1 and not game_over:
-                    dragging = True
-                    i = (event.pos[1] - TOP_PADDING) // (CELL_SIZE + PADDING)
-                    j = event.pos[0] // (CELL_SIZE + PADDING)
-                    if 0 <= i < 5 and 0 <= j < 5:
-                        selected_cells.append((i, j))
-                elif event.button == 3 and not game_over:
-                    if len(selected_cells) > 0:
-                        selected_cells.pop()
-            elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1 and dragging and not game_over:
-                    handle_drag(selected_cells)
-                    dragging = False
-                    selected_cells = []
-                    check_and_fill_grid()  # Проверяем и заполняем пустые клетки после хода
-
-            elif event.type == pygame.MOUSEMOTION:
-                if dragging and not game_over:
-                    mouse_x, mouse_y = event.pos
-                    for i in range(5):
-                        for j in range(5):
-                            cell_center_x = j * (CELL_SIZE + PADDING) + PADDING + CELL_SIZE // 2
-                            cell_center_y = i * (CELL_SIZE + PADDING) + PADDING + CELL_SIZE // 2 + TOP_PADDING
-                            if abs(mouse_x - cell_center_x) <= 30 and abs(mouse_y - cell_center_y) <= 30:
-                                # Проверяем, что значение клетки совпадает с первой выбранной клеткой
-                                if len(selected_cells) > 0:
-                                    first_cell_value = grid[selected_cells[0][0]][selected_cells[0][1]]
-                                    current_cell_value = grid[i][j]
-                                    if current_cell_value != first_cell_value:
-                                        continue  # Пропускаем клетку с другим значением
-
-                                if len(selected_cells) > 1 and (i, j) == selected_cells[-2]:
-                                    selected_cells.pop()
-                                elif (i, j) not in selected_cells:
-                                    selected_cells.append((i, j))
-                                break
+                    if event.button == 1 and not game_over:
+                        dragging = True
+                        i = (event.pos[1] - TOP_PADDING) // (CELL_SIZE + PADDING)
+                        j = event.pos[0] // (CELL_SIZE + PADDING)
+                        if 0 <= i < 5 and 0 <= j < 5:
+                            selected_cells.append((i, j))
+                    elif event.button == 3 and not game_over:
+                        if len(selected_cells) > 0:
+                            selected_cells.pop()
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    if event.button == 1 and dragging and not game_over:
+                        handle_drag(selected_cells)
+                        dragging = False
+                        selected_cells = []
+                        check_and_fill_grid()
+                elif event.type == pygame.MOUSEMOTION:
+                    if dragging and not game_over:
+                        mouse_x, mouse_y = event.pos
+                        for i in range(5):
+                            for j in range(5):
+                                cell_center_x = j * (CELL_SIZE + PADDING) + PADDING + CELL_SIZE // 2
+                                cell_center_y = i * (CELL_SIZE + PADDING) + PADDING + CELL_SIZE // 2 + TOP_PADDING
+                                if abs(mouse_x - cell_center_x) <= 30 and abs(mouse_y - cell_center_y) <= 30:
+                                    if len(selected_cells) > 0:
+                                        first_cell_value = grid[selected_cells[0][0]][selected_cells[0][1]]
+                                        current_cell_value = grid[i][j]
+                                        if current_cell_value != first_cell_value:
+                                            continue
+                                    if len(selected_cells) > 1 and (i, j) == selected_cells[-2]:
+                                        selected_cells.pop()
+                                    elif (i, j) not in selected_cells:
+                                        selected_cells.append((i, j))
+                                    break
 
     pygame.display.flip()
     clock.tick(FPS)
