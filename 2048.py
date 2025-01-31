@@ -311,20 +311,35 @@ def is_game_over():
     return True
 
 def draw_game_over_screen():
-    # Отрисовывает экран проигрыша
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((255, 255, 255, 128))
     screen.blit(overlay, (0, 0))
 
-    # Текст "Game Over"
     game_over_text = menu_font.render("Game Over", True, BLACK)
     game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
     screen.blit(game_over_text, game_over_rect)
 
-    # Счет игрока
     score_text = score_font.render(f"Счет: {score}", True, BLACK)
     score_rect = score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
     screen.blit(score_text, score_rect)
+
+    # Кнопка "Restart"
+    restart_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 80, 200, 60)
+    pygame.draw.rect(screen, (144, 238, 144), restart_rect, border_radius=15)
+    restart_text = menu_font.render("Restart", True, WHITE)
+    restart_text_rect = restart_text.get_rect(center=restart_rect.center)
+    screen.blit(restart_text, restart_text_rect)
+
+    return restart_rect
+
+def restart_game():
+    global grid, falling_cells, score, game_over, selected_cells
+    grid = [[0 for _ in range(5)] for _ in range(5)]
+    falling_cells = []
+    score = 0
+    game_over = False
+    selected_cells = []
+    initialize_grid()
 
 
 
@@ -360,7 +375,15 @@ while running:
                 game_over = True
 
         if game_over:
-            draw_game_over_screen()
+            restart_rect = draw_game_over_screen()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        if restart_rect.collidepoint(event.pos):
+                            restart_game()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
