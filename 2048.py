@@ -51,14 +51,40 @@ grid = [[0 for _ in range(5)] for _ in range(5)]
 falling_cells = []
 score = 0
 
-START_MENU = 0
-GAME_ACTIVE = 1
-game_state = START_MENU
+game_state = 0
 
 EASY = "Easy"
 MEDIUM = "Medium"
 HARD = "Hard"
 current_difficulty = MEDIUM
+
+
+# Загрузка изображений для смены на стартовом экране
+image_paths = ["cat1.jpg", "cat2.jpg"]  # Замените на пути к вашим изображениям
+current_image_index = 0
+
+# Класс для спрайтов
+class ImageSprite(pygame.sprite.Sprite):
+    def __init__(self, image_path, x, y, width, height):
+        super().__init__()
+        self.original_image = pygame.image.load(image_path)
+        self.image = pygame.transform.scale(self.original_image, (width, height))  # Масштабируем изображение
+        self.rect = self.image.get_rect(center=(x, y))
+
+# Размеры и позиция картинки
+IMAGE_WIDTH = 200  # Ширина картинки
+IMAGE_HEIGHT = 150  # Высота картинки
+IMAGE_X = WIDTH // 2  # Центр по горизонтали
+IMAGE_Y = 200  # Позиция по вертикали (между надписью и кнопкой)
+
+# Создание спрайта для отображения картинки
+image_sprite = ImageSprite(image_paths[current_image_index], IMAGE_X, IMAGE_Y, IMAGE_WIDTH, IMAGE_HEIGHT)
+sprite_group = pygame.sprite.Group(image_sprite)
+
+# Таймер для смены изображений
+change_image_event = pygame.USEREVENT + 1
+pygame.time.set_timer(change_image_event, 500)  # 2000 мс = 2 секунды
+
 
 def render_value(value):
     # заменяет большое число на число+К
@@ -271,15 +297,17 @@ def draw_start_menu():
     title_rect = title_text.get_rect(center=(WIDTH // 2, 100))
     screen.blit(title_text, title_rect)
 
-    # Цвета для уровней сложности
-    easy_color = (144, 238, 144)  # Светло-зеленый
-    medium_color = (255, 223, 186)  # Светло-оранжевый
-    hard_color = (255, 182, 193)  # Светло-розовый
+    # Отрисовка спрайта с картинкой
+    sprite_group.draw(screen)
 
-    # Рисуем прямоугольники для уровней сложности
-    easy_rect = pygame.Rect(WIDTH // 2 - 100, 220, 200, 80)
-    medium_rect = pygame.Rect(WIDTH // 2 - 100, 320, 200, 80)
-    hard_rect = pygame.Rect(WIDTH // 2 - 100, 420, 200, 80)
+    # Цвета для уровней сложности
+    easy_color = (144, 238, 144)
+    medium_color = (255, 223, 186)
+    hard_color = (255, 182, 193)
+
+    easy_rect = pygame.Rect(WIDTH // 2 - 100, 280, 200, 80)  # Кнопка Easy ниже картинки
+    medium_rect = pygame.Rect(WIDTH // 2 - 100, 380, 200, 80)
+    hard_rect = pygame.Rect(WIDTH // 2 - 100, 480, 200, 80)
 
     pygame.draw.rect(screen, easy_color, easy_rect, border_radius=20)
     pygame.draw.rect(screen, medium_color, medium_rect, border_radius=20)
@@ -326,18 +354,16 @@ def handle_input_name(event):
 
 
 def handle_menu_click(pos):
-    # Обрабатывает клик в стартовом меню
     global game_state, current_difficulty
-    # Проверяем, куда кликнул пользователь
-    if 220 <= pos[1] <= 300:  # Easy
+    if 280 <= pos[1] <= 360:  # Easy
         current_difficulty = EASY
-        game_state = GAME_ACTIVE
-    elif 320 <= pos[1] <= 400:  # Medium
+        game_state = 1
+    elif 380 <= pos[1] <= 460:  # Medium
         current_difficulty = MEDIUM
-        game_state = GAME_ACTIVE
-    elif 420 <= pos[1] <= 500:  # Hard
+        game_state = 1
+    elif 480 <= pos[1] <= 560:  # Hard
         current_difficulty = HARD
-        game_state = GAME_ACTIVE
+        game_state = 1
 
 def initialize_grid():
     # Инициализирует игровое поле в зависимости от выбранного уровня сложности
@@ -391,7 +417,7 @@ def is_game_over():
     # Проверяет, остались ли на поле клетки, которые можно объединить
     for i in range(5):
         for j in range(5):
-            for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, 1), (1, 1), (-1, -1)]:
                 ni, nj = i + di, j + dj
                 if 0 <= ni < 5 and 0 <= nj < 5:
                     if grid[ni][nj] == grid[i][j]:
@@ -440,7 +466,7 @@ input_name_active = False
 show_records = False
 
 while running:
-    if game_state == START_MENU:
+    if game_state == 0:
         draw_start_menu()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -449,7 +475,14 @@ while running:
                 if event.button == 1:
                     handle_menu_click(event.pos)
                     initialize_grid()
-    elif game_state == GAME_ACTIVE:
+            elif event.type == change_image_event:
+                # Смена картинки каждые 2 секунды
+                current_image_index = (current_image_index + 1) % len(image_paths)
+                image_sprite.image = pygame.transform.scale(
+                    pygame.image.load(image_paths[current_image_index]),
+                    (IMAGE_WIDTH, IMAGE_HEIGHT)
+                )
+    elif game_state == 1:
         if not game_over:
             screen.fill(WHITE)
             if dragging:
@@ -484,7 +517,7 @@ while running:
                             if back_rect.collidepoint(event.pos):
                                 show_records = False
                                 restart_game()
-                                game_state = START_MENU
+                                game_state = 0
         else:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
