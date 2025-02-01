@@ -26,7 +26,7 @@ COLORS = {
     128: (87, 132, 186),
     256: (230, 165, 126),
     512: (118, 205, 205),
-    1024: (162,162,208),
+    1024: (162, 162, 208),
     2048: (182, 216, 242),
     4096: (129, 199, 132),
     8192: (238, 186, 178),
@@ -58,10 +58,10 @@ MEDIUM = "Medium"
 HARD = "Hard"
 current_difficulty = MEDIUM
 
-
 # Загрузка изображений для смены на стартовом экране
 image_paths = ["cat1.jpg", "cat2.jpg"]  # Замените на пути к вашим изображениям
 current_image_index = 0
+
 
 # Класс для спрайтов
 class ImageSprite(pygame.sprite.Sprite):
@@ -71,26 +71,22 @@ class ImageSprite(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.original_image, (width, height))  # Масштабируем изображение
         self.rect = self.image.get_rect(center=(x, y))
 
-# Размеры и позиция картинки
-IMAGE_WIDTH = 200  # Ширина картинки
-IMAGE_HEIGHT = 150  # Высота картинки
-IMAGE_X = WIDTH // 2  # Центр по горизонтали
-IMAGE_Y = 200  # Позиция по вертикали (между надписью и кнопкой)
 
 # Создание спрайта для отображения картинки
-image_sprite = ImageSprite(image_paths[current_image_index], IMAGE_X, IMAGE_Y, IMAGE_WIDTH, IMAGE_HEIGHT)
+image_sprite = ImageSprite(image_paths[current_image_index], WIDTH // 2, 200, 200, 150)
 sprite_group = pygame.sprite.Group(image_sprite)
-
-# Таймер для смены изображений
 change_image_event = pygame.USEREVENT + 1
-pygame.time.set_timer(change_image_event, 500)  # 2000 мс = 2 секунды
+pygame.time.set_timer(change_image_event, 500)
 
 
 def render_value(value):
     # заменяет большое число на число+К
-    if value >= 16384:
+    if value >= 1048576:
+        return f"{value // 1024 // 1024}M"
+    elif value >= 16384:
         return f"{value // 1024}K"
     return str(value)
+
 
 def draw_grid():
     # отрисовка игрового поля
@@ -121,7 +117,7 @@ def draw_grid():
 
 
 def load_records():
-    #Загружает таблицу рекордов из CSV-файла
+    # Загружает таблицу рекордов из CSV-файла
     if not os.path.exists(RECORDS_FILE):
         return []
 
@@ -135,7 +131,7 @@ def load_records():
 
 
 def save_records(records):
-    #Сохраняет таблицу рекордов в CSV-файл
+    # Сохраняет таблицу рекордов в CSV-файл
     with open(RECORDS_FILE, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         for record in records:
@@ -143,7 +139,7 @@ def save_records(records):
 
 
 def add_record(name, score):
-    #Добавляет новый рекорд в таблицу
+    # Добавляет новый рекорд в таблицу
     records = load_records()
     records.append((name, score))
     # Сортируем записи по убыванию счета
@@ -152,21 +148,44 @@ def add_record(name, score):
     records = records[:10]
     save_records(records)
 
+
 def add_random_tile(column, count):
     # добавляет случайные плитки в столбец сверху
     global falling_cells
-    for _ in range(count):
+    for _ in range(2):
         for i in range(5):
             if grid[i][column] == 0:
-                falling_cells.append({
-                    "start_i": -1,
-                    "start_j": column,
-                    "end_i": i,
-                    "end_j": column,
-                    "progress": 0.0,
-                    "value": random.choice([2, 4, 8, 16, 32, 64])
-                })
-                break
+                if current_difficulty == EASY:
+                    falling_cells.append({
+                        "start_i": -1,
+                        "start_j": column,
+                        "end_i": i,
+                        "end_j": column,
+                        "progress": 0.0,
+                        "value": random.choice([2, 4, 8, 16, 32, 64])
+                    })
+                    break
+                elif current_difficulty == MEDIUM:
+                    falling_cells.append({
+                        "start_i": -1,
+                        "start_j": column,
+                        "end_i": i,
+                        "end_j": column,
+                        "progress": 0.0,
+                        "value": random.choice([2, 2, 4, 4, 8, 16, 32, 64])
+                    })
+                    break
+                elif current_difficulty == HARD:
+                    falling_cells.append({
+                        "start_i": -1,
+                        "start_j": column,
+                        "end_i": i,
+                        "end_j": column,
+                        "progress": 0.0,
+                        "value": random.choice([2, 2, 2, 4, 4, 8, 8, 16, 32, 64])
+                    })
+                    break
+
 
 def merge_tiles(cells):
     # объединяет несколько клеток с одинаковыми значениями
@@ -197,6 +216,7 @@ def merge_tiles(cells):
 
     return True
 
+
 def is_valid_move(cells):
     # проверяет, является ли ход допустимым
     for k in range(1, len(cells)):
@@ -205,6 +225,7 @@ def is_valid_move(cells):
         if abs(prev_i - curr_i) > 1 or abs(prev_j - curr_j) > 1:
             return False
     return True
+
 
 def shift_cells_down():
     # сдвигает все клетки вниз
@@ -230,6 +251,7 @@ def shift_cells_down():
                     break
             i -= 1
 
+
 def draw_line(cells):
     # отрисовывает линию
     if len(cells) > 1:
@@ -240,8 +262,9 @@ def draw_line(cells):
             points.append((x, y))
         pygame.draw.lines(screen, BLACK, False, points, 15)  # Увеличиваем толщину линии до 5
 
+
 def handle_drag(cells):
-    #Обрабатывает перетаскивание мыши и объединение клеток
+    # Обрабатывает перетаскивание мыши и объединение клеток
     if len(cells) >= 2 and is_valid_move(cells):
         if merge_tiles(cells):
             shift_cells_down()
@@ -250,6 +273,7 @@ def handle_drag(cells):
                 # Проверяем, есть ли пустые места в столбце
                 if any(grid[i][j] == 0 for i in range(5)):
                     add_random_tile(j, 1)  # Добавляем по одной новой клетке в каждый столбец с пустыми местами
+
 
 def update_falling_cells():
     # Обновляет анимацию падения клеток
@@ -260,6 +284,7 @@ def update_falling_cells():
             cell["progress"] = 1.0
             grid[cell["end_i"]][cell["end_j"]] = cell["value"]
     falling_cells = [cell for cell in falling_cells if cell["progress"] < 1.0]
+
 
 def draw_falling_cells():
     # Отрисовывает падающие клетки
@@ -283,12 +308,14 @@ def draw_falling_cells():
             text_rect = text.get_rect(center=(x + CELL_SIZE // 2, y + CELL_SIZE // 2))
             screen.blit(text, text_rect)
 
+
 def draw_score():
     # Отрисовывает счет
     score_text = score_font.render(f"Счет: {score}", True, BLACK)
     # Центрируем счет по горизонтали и располагаем выше игрового поля
     score_text_rect = score_text.get_rect(center=(WIDTH // 2, 30))
     screen.blit(score_text, score_text_rect)
+
 
 def draw_start_menu():
     # Отрисовывает стартовое меню с выбором уровня сложности
@@ -305,7 +332,7 @@ def draw_start_menu():
     medium_color = (255, 223, 186)
     hard_color = (255, 182, 193)
 
-    easy_rect = pygame.Rect(WIDTH // 2 - 100, 280, 200, 80)  # Кнопка Easy ниже картинки
+    easy_rect = pygame.Rect(WIDTH // 2 - 100, 280, 200, 80)
     medium_rect = pygame.Rect(WIDTH // 2 - 100, 380, 200, 80)
     hard_rect = pygame.Rect(WIDTH // 2 - 100, 480, 200, 80)
 
@@ -327,7 +354,7 @@ def draw_start_menu():
 
 
 def draw_input_name_screen():
-    #Отрисовывает экран для ввода имени игрока
+    # Отрисовывает экран для ввода имени игрока
     screen.fill(WHITE)
     input_text = menu_font.render("Введите ваше имя:", True, BLACK)
     input_rect = input_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
@@ -338,8 +365,9 @@ def draw_input_name_screen():
     name_rect = name_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
     screen.blit(name_text, name_rect)
 
+
 def handle_input_name(event):
-    """Обрабатывает ввод имени игрока."""
+    # Обрабатывает ввод имени игрока
     global player_name
     if event.key == pygame.K_BACKSPACE:
         player_name = player_name[:-1]
@@ -365,6 +393,7 @@ def handle_menu_click(pos):
         current_difficulty = HARD
         game_state = 1
 
+
 def initialize_grid():
     # Инициализирует игровое поле в зависимости от выбранного уровня сложности
     global grid
@@ -372,11 +401,12 @@ def initialize_grid():
     for i in range(5):
         for j in range(5):
             if current_difficulty == EASY:
-                grid[i][j] = random.choice([2, 4, 8])
-            elif current_difficulty == MEDIUM:
                 grid[i][j] = random.choice([2, 4, 8, 16, 32, 64])
+            elif current_difficulty == MEDIUM:
+                grid[i][j] = random.choice([2, 2, 4, 4, 8, 16, 32, 64])
             elif current_difficulty == HARD:
-                grid[i][j] = random.choice([2, 4, 8, 16, 32, 64, 128, 256])
+                grid[i][j] = random.choice([2, 2, 2, 4, 4, 8, 8, 16, 32, 64])
+
 
 def check_and_fill_grid():
     # Проверяет, есть ли на поле пустые клетки, и заполняет их случайными значениями
@@ -391,7 +421,7 @@ def check_and_fill_grid():
 
 
 def draw_records_screen():
-    #Отрисовывает экран с таблицей рекордов
+    # Отрисовывает экран с таблицей рекордов
     screen.fill(WHITE)
     records = load_records()
     title_text = menu_font.render("Таблица рекордов", True, BLACK)
@@ -424,6 +454,7 @@ def is_game_over():
                         return False
     return True
 
+
 def draw_game_over_screen():
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((255, 255, 255, 128))
@@ -445,6 +476,7 @@ def draw_game_over_screen():
     screen.blit(restart_text, restart_text_rect)
 
     return restart_rect
+
 
 def restart_game():
     global grid, falling_cells, score, game_over, selected_cells
@@ -480,7 +512,7 @@ while running:
                 current_image_index = (current_image_index + 1) % len(image_paths)
                 image_sprite.image = pygame.transform.scale(
                     pygame.image.load(image_paths[current_image_index]),
-                    (IMAGE_WIDTH, IMAGE_HEIGHT)
+                    (200, 150)
                 )
     elif game_state == 1:
         if not game_over:
