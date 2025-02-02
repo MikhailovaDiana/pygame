@@ -365,6 +365,14 @@ def draw_input_name_screen():
     name_rect = name_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
     screen.blit(name_text, name_rect)
 
+    game_over_text = menu_font.render("Game Over", True, BLACK)
+    game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 150))
+    screen.blit(game_over_text, game_over_rect)
+
+    score_text = score_font.render(f"Счет: {score}", True, BLACK)
+    score_rect = score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 170))
+    screen.blit(score_text, score_rect)
+
 
 def handle_input_name(event):
     # Обрабатывает ввод имени игрока
@@ -453,29 +461,6 @@ def is_game_over():
                     if grid[ni][nj] == grid[i][j]:
                         return False
     return True
-
-
-def draw_game_over_screen():
-    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    overlay.fill((255, 255, 255, 128))
-    screen.blit(overlay, (0, 0))
-
-    game_over_text = menu_font.render("Game Over", True, BLACK)
-    game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
-    screen.blit(game_over_text, game_over_rect)
-
-    score_text = score_font.render(f"Счет: {score}", True, BLACK)
-    score_rect = score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
-    screen.blit(score_text, score_rect)
-
-    # Кнопка "Restart"
-    restart_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 80, 200, 60)
-    pygame.draw.rect(screen, (144, 238, 144), restart_rect, border_radius=15)
-    restart_text = menu_font.render("Restart", True, WHITE)
-    restart_text_rect = restart_text.get_rect(center=restart_rect.center)
-    screen.blit(restart_text, restart_text_rect)
-
-    return restart_rect
 
 
 def restart_game():
